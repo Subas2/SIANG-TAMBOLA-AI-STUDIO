@@ -1,0 +1,5 @@
+{
+  "name": "27",
+  "description": "A comprehensive Tambola (Housie) game application with admin, agent, and player roles. Features include dynamic game creation, ticket generation and booking, live number calling with speech synthesis, prize claim validation, and theme customization.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+}
+
+body { 
+    font-family: var(--font-sans); 
+    overflow-x: hidden;
+}
+button {
+    transition: transform 0.1s ease-in-out;
+}
+button:active {
+    transform: scale(0.97);
+}
+
+/* Animations & Transitions */
+@keyframes animated-gradient-background {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animated-colorful-bg {
+    background: linear-gradient(-45deg, #230b34, #391151, #0b2f34, #124d51);
+    background-size: 400% 400%;
+    animation: animated-gradient-background 18s ease infinite;
+}
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes fadeOutDown { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(10px); } }
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes smokeIn {
+  0% {
+    opacity: 0;
+    transform: scale(2);
+    filter: blur(10px) drop-shadow(0 0 30px #a855f7) drop-shadow(0 0 50px #ec4899);
+  }
+  60% {
+    opacity: 0.9;
+    transform: scale(1.1);
+    filter: blur(2px) drop-shadow(0 0 15px #a855f7) drop-shadow(0 0 25px #ec4899);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0) drop-shadow(0 0 5px #a855f7) drop-shadow(0 0 8px #ec4899);
+  }
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+@keyframes numberCallPulse {
+  0% { transform: scale(1.1); box-shadow: 0 0 0 rgba(239, 68, 68, 0.7); }
+  50% { transform: scale(1.4); box-shadow: 0 0 15px rgba(239, 68, 68, 0.9), 0 0 25px rgba(239, 68, 68, 0.7); }
+  100% { transform: scale(1.1); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+}
+.animate-number-call {
+  animation: numberCallPulse 1s cubic-bezier(0.215, 0.610, 0.355, 1) forwards;
+}
+
+@keyframes live-container-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(99, 102, 241, 0.5), 0 0 20px rgba(168, 85, 247, 0.3); }
+  50% { box-shadow: 0 0 24px rgba(99, 102, 241, 0.8), 0 0 40px rgba(168, 85, 247, 0.5); }
+}
+.animate-live-container-pulse {
+  animation: live-container-pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes subtle-called-glow {
+  0%, 100% { box-shadow: inset 0 0 2px 1px rgba(255,255,255,0.2); }
+  50% { box-shadow: inset 0 0 5px 2px rgba(255,255,255,0.6); }
+}
+.animate-subtle-called-glow {
+  animation: subtle-called-glow 2.5s infinite ease-in-out;
+}
+
+@keyframes subtleGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(252, 211, 77, 0.6); }
+  50% { box-shadow: 0 0 16px rgba(252, 211, 77, 1); }
+}
+.animate-subtle-glow {
+  animation: subtleGlow 2.5s infinite ease-in-out;
+}
+
+@keyframes icon-intro-pulse {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+    filter: brightness(2) drop-shadow(0 0 30px #a855f7);
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+    filter: brightness(1.5) drop-shadow(0 0 50px #ec4899);
+  }
+  75% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: brightness(1) drop-shadow(0 0 20px #a855f7);
+  }
+}
+
+.ticket-number-chip {
+    transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out, transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.animate-fade-in-up { animation: fadeInUp 0.5s cubic-bezier(0.215, 0.610, 0.355, 1) forwards; }
+.animate-scale-in { animation: scaleIn 0.3s cubic-bezier(0.215, 0.610, 0.355, 1) forwards; }
+.animate-fade-out-down { animation: fadeOutDown 0.3s cubic-bezier(0.550, 0.055, 0.675, 0.190) forwards; }
+.animate-fade-in-down { animation: fadeInDown 0.5s cubic-bezier(0.215, 0.610, 0.355, 1) forwards; }
+.animate-smoke-in { animation: smokeIn 3s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+.animate-fade-in { animation: fadeIn 1.5s cubic-bezier(0.215, 0.610, 0.355, 1) forwards; }
+.animate-fade-out { animation: fadeOut 1s ease-out forwards; }
+.animate-icon-intro { animation: icon-intro-pulse 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+
+@keyframes kenburns-effect {
+    0% { transform: scale(1.1) translate(2%, -2%); }
+    50% { transform: scale(1) translate(0, 0); }
+    100% { transform: scale(1.1) translate(2%, -2%); }
+}
+
+@keyframes rain-fall {
+    0% { transform: translateY(-100px); opacity: 0; }
+    50% { opacity: 1; }
+    100% { transform: translateY(calc(100vh + 100px)); opacity: 0; }
+}
+
+@keyframes fly-across {
+    0% { transform: translateX(-10vw) translateY(var(--y-start, 0)) scale(var(--scale, 1)); }
+    25% { transform: translateX(20vw) translateY(calc(var(--y-start, 0) - 2vh)) scale(var(--scale, 1)); }
+    50% { transform: translateX(50vw) translateY(calc(var(--y-start, 0) + 1vh)) scale(var(--scale, 1)); }
+    75% { transform: translateX(80vw) translateY(calc(var(--y-start, 0) - 1vh)) scale(var(--scale, 1)); }
+    100% { transform: translateX(110vw) translateY(var(--y-start, 0)) scale(var(--scale, 1)); }
+}
+
+/* Hide the default time input icon for a custom look */
+input[type="time"]::-webkit-calendar-picker-indicator {
+    background: none;
+    display: none;
+}
+
+.writing-mode-vertical-rl {
+    writing-mode: vertical-rl;
+}
+
+/* Ticket Themes */
+.ticket-theme-festive {
+    background-image: linear-gradient(to right bottom, #fff1f2, #fce7f3), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath fill='%23ef4444' fill-opacity='0.1' d='M10 0L8.59 1.41 13.17 6H0v2h13.17l-4.58 4.59L10 14l6-6-6-6zM10 20l-1.41-1.41L13.17 14H0v-2h13.17l-4.58-4.59L10 6l6 6-6 6z'/%3E%3C/svg%3E");
+    border-color: #f43f5e;
+}
+.ticket-theme-festive .ticket-header-text { color: #be123c; }
+.ticket-theme-festive .ticket-grid-border { border-color: rgba(225, 29, 72, 0.4); }
+.ticket-theme-festive .ticket-grid-bg { background-color: rgba(255, 255, 255, 0.5); }
+.ticket-theme-festive .ticket-cell-bg { background-color: #fee2e2; }
+.ticket-theme-festive .ticket-number-uncalled { color: #9f1239; background-color: #fecaca; }
+.ticket-theme-festive .ticket-number-called {
+    background-image: linear-gradient(to br, #fb7185, #f43f5e);
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.7);
+    box-shadow: 0 0 8px rgba(236, 72, 153, 0.8);
+}
+
+.ticket-theme-classic {
+    background-color: #fdf6e3;
+    border-color: #a1887f;
+    font-family: 'Playfair Display', serif;
+}
+.ticket-theme-classic .ticket-header-text { color: #5d4037; font-family: 'Lobster', cursive; }
+.ticket-theme-classic .ticket-grid-border { border-color: #d7ccc8; }
+.ticket-theme-classic .ticket-grid-bg { background-color: rgba(239, 231, 219, 0.5); }
+.ticket-theme-classic .ticket-cell-bg { background-color: #efebe9; }
+.ticket-theme-classic .ticket-number-uncalled { color: #4e342e; background-color: #d7ccc8; }
+.ticket-theme-classic .ticket-number-called {
+    background-image: linear-gradient(to br, #8d6e63, #5d4037);
+}
+
+.ticket-theme-floral {
+    background-color: #f0fdf4;
+    border-color: #22c55e;
+    position: relative;
+}
+.ticket-theme-floral::before {
+    content: '🌸';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    font-size: 1.2rem;
+    opacity: 0.5;
+}
+.ticket-theme-floral::after {
+    content: '🌿';
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    font-size: 1.2rem;
+    opacity: 0.5;
+}
+.ticket-theme-floral .ticket-header-text { color: #15803d; font-family: 'Pacifico', cursive; }
+.ticket-theme-floral .ticket-grid-border { border-color: rgba(34, 197, 94, 0.4); }
+.ticket-theme-floral .ticket-grid-bg { background-color: rgba(255, 255, 255, 0.7); }
+.ticket-theme-floral .ticket-cell-bg { background-color: #dcfce7; }
+.ticket-theme-floral .ticket-number-uncalled { color: #166534; background-color: #bbf7d0; }
+.ticket-theme-floral .ticket-number-called {
+    background-image: linear-gradient(to br, #4ade80, #16a34a);
+}
+
+.ticket-theme-patriotic {
+    background-image: linear-gradient(to bottom, rgba(255, 159, 64, 0.2), rgba(255, 255, 255, 0.2) 33%, rgba(255, 255, 255, 0.2) 66%, rgba(18, 136, 7, 0.2));
+    border-color: #000080; /* Navy Blue */
+}
+.ticket-theme-patriotic .ticket-header-text { color: #000080; font-family: 'Anton', sans-serif; }
+.ticket-theme-patriotic .ticket-grid-border { border-color: rgba(0, 0, 128, 0.4); }
+.ticket-theme-patriotic .ticket-grid-bg { background-color: rgba(255, 255, 255, 0.7); }
+.ticket-theme-patriotic .ticket-cell-bg { background-color: #e0e7ff; }
+.ticket-theme-patriotic .ticket-number-uncalled { color: #1e3a8a; background-color: #c7d2fe; }
+.ticket-theme-patriotic .ticket-number-called {
+    background-image: linear-gradient(to br, #4f46e5, #312e81);
+}

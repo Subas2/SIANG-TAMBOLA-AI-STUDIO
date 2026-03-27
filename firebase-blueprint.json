@@ -1,0 +1,138 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the Tambola platform",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "username": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "agent", "player"] },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "email": { "type": "string" },
+        "password": { "type": "string" },
+        "photo": { "type": "string" },
+        "isBookingAllowed": { "type": "boolean" },
+        "isBlocked": { "type": "boolean" },
+        "isVisibleToPlayers": { "type": "boolean" }
+      },
+      "required": ["name", "username", "role"]
+    },
+    "Game": {
+      "title": "Game",
+      "description": "A Tambola game",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "status": { "type": "string", "enum": ["upcoming", "ongoing", "completed"] },
+        "ticketPrice": { "type": "number" },
+        "ticketLimit": { "type": "number" },
+        "calledNumbers": { "type": "array", "items": { "type": "number" } },
+        "isAutoCalling": { "type": "boolean" },
+        "callMode": { "type": "string", "enum": ["auto", "mix"] },
+        "chatMessages": { "type": "array" }
+      },
+      "required": ["title", "status"]
+    },
+    "Ticket": {
+      "title": "Ticket",
+      "description": "A Tambola ticket",
+      "type": "object",
+      "properties": {
+        "game": { "type": "string" },
+        "serialNumber": { "type": "number" },
+        "numbers": { "type": "string" },
+        "status": { "type": "string", "enum": ["available", "booked"] },
+        "player": { "type": "string" },
+        "bookedByAgent": { "type": "string" }
+      },
+      "required": ["game", "serialNumber", "numbers", "status"]
+    },
+    "Claim": {
+      "title": "Claim",
+      "description": "A prize claim",
+      "type": "object",
+      "properties": {
+        "player": { "type": "string" },
+        "game": { "type": "string" },
+        "ticket": { "type": "string" },
+        "prizeName": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+      },
+      "required": ["player", "game", "ticket", "prizeName", "status"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global app settings",
+      "type": "object",
+      "properties": {
+        "callMode": { "type": "string" }
+      }
+    },
+    "TicketRequest": {
+      "title": "TicketRequest",
+      "description": "A ticket request from a player",
+      "type": "object",
+      "properties": {
+        "playerId": { "type": "string" },
+        "playerName": { "type": "string" },
+        "playerPhone": { "type": "string" },
+        "ticketIds": { "type": "array", "items": { "type": "string" } },
+        "agentId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "created_at": { "type": "string" }
+      },
+      "required": ["playerId", "playerName", "ticketIds", "agentId", "status"]
+    },
+    "AgentRequest": {
+      "title": "AgentRequest",
+      "description": "A request to become an agent",
+      "type": "object",
+      "properties": {
+        "playerId": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+      },
+      "required": ["playerId", "name", "status"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "games/{gameId}": {
+      "schema": { "$ref": "#/entities/Game" },
+      "description": "Games"
+    },
+    "tickets/{ticketId}": {
+      "schema": { "$ref": "#/entities/Ticket" },
+      "description": "Tickets"
+    },
+    "claims/{claimId}": {
+      "schema": { "$ref": "#/entities/Claim" },
+      "description": "Claims"
+    },
+    "settings/{settingId}": {
+      "schema": { "$ref": "#/entities/Settings" },
+      "description": "Settings"
+    },
+    "payments/{paymentId}": {
+      "schema": "object",
+      "description": "Payments"
+    },
+    "ticket_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/TicketRequest" },
+      "description": "Ticket requests"
+    },
+    "agent_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/AgentRequest" },
+      "description": "Agent requests"
+    },
+    "tracked_tickets/{id}": {
+      "schema": "object",
+      "description": "Tracked tickets"
+    }
+  }
+}

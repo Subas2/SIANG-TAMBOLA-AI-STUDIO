@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        ((request.auth.token.email == "www.subashkaman2018s@gmail.com" && request.auth.token.email_verified == true) ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+
+    function isAgentRole() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent';
+    }
+
+    function isAgent(agentId) {
+      return isAgentRole() && request.auth.uid == agentId;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Games collection
+    match /games/{gameId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Tickets collection
+    match /tickets/{ticketId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || 
+                      (isAgentRole() && (
+                        resource.data.bookedByAgent == request.auth.uid || 
+                        (resource.data.status == 'available' && request.resource.data.bookedByAgent == request.auth.uid)
+                      ));
+    }
+
+    // Claims collection
+    match /claims/{claimId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAdmin() || isOwner(userId) || resource.data.role == 'agent' || isAgentRole();
+      allow create: if isAdmin() || isOwner(userId) || (isAgentRole() && request.resource.data.role == 'player') || (isAuthenticated() && request.resource.data.role == 'player');
+      allow update: if isAdmin() || isOwner(userId) || (isAgentRole() && resource.data.role == 'player' && request.resource.data.role == 'player');
+      allow delete: if isAdmin();
+    }
+
+    // Settings collection
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Themes collection
+    match /themes/{themeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Ticket Requests collection
+    match /ticket_requests/{requestId} {
+      allow read: if isAdmin() || 
+                    (isAuthenticated() && (
+                      (resource.data.agentId == request.auth.uid) || 
+                      (resource.data.playerId == request.auth.uid)
+                    ));
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.agentId == request.auth.uid);
+    }
+
+    // Agent Requests collection
+    match /agent_requests/{requestId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.playerId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+    }
+
+    // Payments collection
+    match /payments/{paymentId} {
+      allow read: if isAdmin() || 
+                    (isAuthenticated() && (
+                      (resource.data.agentId == request.auth.uid) || 
+                      (resource.data.playerId == request.auth.uid)
+                    ));
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.agentId == request.auth.uid);
+    }
+
+    // Tracked Tickets collection
+    match /tracked_tickets/{id} {
+      allow read: if isAdmin() || (isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid));
+      allow create: if isAdmin() || (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+  }
+}
