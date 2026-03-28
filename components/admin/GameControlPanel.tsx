@@ -137,9 +137,21 @@ export const GameControlPanel: React.FC<GameControlPanelProps> = ({ game: initia
         }
     };
 
+    const handleStartGame = async () => {
+        if (game) {
+            await gameService.startGame(game._id);
+            toast.show(`Game "${game.title}" is starting with a 10s countdown.`);
+            fetchGames();
+        }
+    };
+
     const handleToggleAutoCall = async () => {
         if (game) {
-            await gameService.toggleAutoCall(game._id);
+            if (game.isAutoCalling) {
+                await gameService.pauseGame(game._id);
+            } else {
+                await gameService.resumeGame(game._id);
+            }
             toast.show(`Auto-call ${game.isAutoCalling ? 'paused' : 'resumed'}.`);
             fetchGames();
         }
@@ -163,14 +175,23 @@ export const GameControlPanel: React.FC<GameControlPanelProps> = ({ game: initia
         setShowConfirm(true);
     };
 
-    const handleCallModeChange = async (newMode: 'auto' | 'mix') => {
+    const handleCallModeChange = async (newMode: 'auto' | 'manual' | 'mix') => {
         if (!game) return;
         try {
             await gameService.updateGame(game._id, { callMode: newMode });
             toast.show(`Call mode set to ${newMode}.`);
-            // The component's state will automatically update from the subscription/polling.
         } catch (error) {
             toast.show('Failed to update call mode.', { type: 'error' });
+        }
+    };
+
+    const handleToggleRhymes = async () => {
+        if (!game) return;
+        try {
+            await gameService.updateGame(game._id, { useRhymes: !game.useRhymes });
+            toast.show(`Rhymes ${!game.useRhymes ? 'enabled' : 'disabled'}.`);
+        } catch (error) {
+            toast.show('Failed to update rhymes setting.', { type: 'error' });
         }
     };
     
@@ -203,12 +224,24 @@ export const GameControlPanel: React.FC<GameControlPanelProps> = ({ game: initia
                     <div className="bg-white/50 backdrop-blur-md p-4 rounded-xl shadow-lg">
                         <h3 className={`font-bold text-lg mb-3 ${activeTheme.cardTextColor}`}>Game Controls</h3>
                         <div className="grid grid-cols-2 gap-3">
-                            <button onClick={handleToggleAutoCall} disabled={!isGameActive} className={`p-2 rounded-lg font-bold text-white transition-colors ${isAutoCalling ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'} disabled:bg-gray-400 disabled:cursor-not-allowed`}>
-                                {isAutoCalling ? 'Pause Auto' : 'Resume Auto'}
-                            </button>
-                            <button onClick={() => { setConfirmAction({ message: 'Are you sure you want to end this game? This will mark it as completed.', onConfirm: handleEndGame }); setShowConfirm(true); }} disabled={!isGameActive} className="p-2 rounded-lg font-bold text-white bg-rose-500 hover:bg-rose-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
-                                End Game
-                            </button>
+                            {game.status === 'upcoming' ? (
+                                <button onClick={handleStartGame} className="col-span-2 p-3 rounded-lg font-bold text-white bg-green-600 hover:bg-green-700 transition-colors shadow-lg flex items-center justify-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Start Game
+                                </button>
+                            ) : (
+                                <>
+                                    <button onClick={handleToggleAutoCall} disabled={!isGameActive} className={`p-2 rounded-lg font-bold text-white transition-colors ${isAutoCalling ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'} disabled:bg-gray-400 disabled:cursor-not-allowed`}>
+                                        {isAutoCalling ? 'Pause' : 'Resume'}
+                                    </button>
+                                    <button onClick={() => { setConfirmAction({ message: 'Are you sure you want to end this game? This will mark it as completed.', onConfirm: handleEndGame }); setShowConfirm(true); }} disabled={!isGameActive} className="p-2 rounded-lg font-bold text-white bg-rose-500 hover:bg-rose-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+                                        End Game
+                                    </button>
+                                </>
+                            )}
                         </div>
                         <div className="mt-4 pt-4 border-t border-gray-300">
                             <label className="text-sm font-semibold text-gray-600">Call Mode</label>
@@ -222,6 +255,13 @@ export const GameControlPanel: React.FC<GameControlPanelProps> = ({ game: initia
                                 </button>
                                 <button
                                     type="button"
+                                    onClick={() => handleCallModeChange('manual')}
+                                    className={`w-full text-center py-1.5 text-sm font-bold rounded-md transition-colors ${game.callMode === 'manual' ? 'bg-indigo-500 text-white shadow' : 'text-gray-700 hover:bg-white/50'}`}
+                                >
+                                    Manual
+                                </button>
+                                <button
+                                    type="button"
                                     onClick={() => handleCallModeChange('mix')}
                                     className={`w-full text-center py-1.5 text-sm font-bold rounded-md transition-colors ${game.callMode === 'mix' ? 'bg-indigo-500 text-white shadow' : 'text-gray-700 hover:bg-white/50'}`}
                                 >
@@ -230,22 +270,34 @@ export const GameControlPanel: React.FC<GameControlPanelProps> = ({ game: initia
                             </div>
                             <p className="text-xs text-gray-500 mt-1">
                                 {game.callMode === 'auto'
-                                    ? "Auto: Only random numbers are called."
-                                    : "Mix: Manual queue is used before random."}
+                                    ? "Auto: Numbers are called automatically."
+                                    : game.callMode === 'manual'
+                                    ? "Manual: Only numbers you select are called."
+                                    : "Mix: Manual queue is used before auto calling."}
                             </p>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-gray-300 flex items-center justify-between">
+                            <label className="text-sm font-semibold text-gray-600">Use Rhymes</label>
+                            <button 
+                                onClick={handleToggleRhymes}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${game.useRhymes ? 'bg-indigo-600' : 'bg-gray-300'}`}
+                            >
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${game.useRhymes ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
                         </div>
                         <div className="mt-4 pt-4 border-t border-gray-300">
                             <label className="text-sm font-semibold text-gray-600">Live Number Timer Speed (Seconds)</label>
                             <div className="flex items-center gap-4 mt-2">
                                 <input 
                                     type="range" 
-                                    min="2" 
+                                    min="3" 
                                     max="15" 
+                                    step="1"
                                     value={callDelay} 
                                     onChange={async (e) => {
                                         const newDelay = parseInt(e.target.value);
                                         setCallDelay(newDelay);
-                                        await gameService.updateSettings({ callDelay: newDelay });
+                                        await gameService.updateGame(game._id, { callDelay: newDelay });
                                         fetchGames();
                                     }} 
                                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
@@ -270,7 +322,29 @@ export const GameControlPanel: React.FC<GameControlPanelProps> = ({ game: initia
 
                     <div className="bg-white/50 backdrop-blur-md p-4 rounded-xl shadow-lg">
                         <h3 className={`font-bold text-lg mb-3 ${activeTheme.cardTextColor}`}>Manual Call</h3>
-                        <div className="flex gap-2">
+                        <div className="grid grid-cols-10 gap-1 bg-black/5 p-2 rounded-lg">
+                            {Array.from({ length: 90 }, (_, i) => i + 1).map(num => {
+                                const isCalled = game.calledNumbers.includes(num);
+                                const isInQueue = game.manualQueue?.includes(num);
+                                return (
+                                    <button
+                                        key={num}
+                                        disabled={isCalled || !isGameActive}
+                                        onClick={() => gameService.callNumberManually(game._id, num)}
+                                        className={`aspect-square flex items-center justify-center text-[10px] font-bold rounded transition-all ${
+                                            isCalled 
+                                                ? 'bg-gray-400 text-white cursor-not-allowed' 
+                                                : isInQueue
+                                                ? 'bg-amber-500 text-white animate-pulse'
+                                                : 'bg-white hover:bg-indigo-100 text-gray-700 shadow-sm'
+                                        }`}
+                                    >
+                                        {num}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div className="mt-4 flex gap-2">
                             <input type="number" value={manualNumber} onChange={e => setManualNumber(e.target.value)} placeholder="1-90" className="w-full p-2 border rounded-md" disabled={!isGameActive} />
                             <button onClick={handleManualCall} disabled={!isGameActive} className="p-2 px-4 rounded-lg font-bold text-white bg-indigo-500 hover:bg-indigo-600 transition-colors disabled:bg-gray-400">Call</button>
                         </div>

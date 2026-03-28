@@ -14,6 +14,7 @@ import { TimeControlBar } from '../common/TimeControlBar';
 import { DividendsList } from '../common/DividendsList';
 import { AnnouncementPopup } from '../common/AnnouncementPopup';
 import { AnnouncementDisplay } from '../common/AnnouncementDisplay';
+import UpcomingGameCountdown from '../common/UpcomingGameCountdown';
 import { GameControlPanel } from './GameControlPanel';
 import { GameForm } from './GameForm';
 import { ThemeManagement } from './ThemeManagement';
@@ -316,18 +317,19 @@ const AdminProfile: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 const QuickActions: React.FC<{
     navigateTo: (page: string) => void;
     onShowWinnerList: () => void;
+    onAnnounce: () => void;
     pendingTicketRequestCount: number;
     pendingAgentRequestCount: number;
     pendingPaymentCount: number;
-}> = ({ navigateTo, onShowWinnerList, pendingTicketRequestCount, pendingAgentRequestCount, pendingPaymentCount }) => {
+}> = ({ navigateTo, onShowWinnerList, onAnnounce, pendingTicketRequestCount, pendingAgentRequestCount, pendingPaymentCount }) => {
     const actions = [
         { key: 'create', title: 'Create Game', icon: 'M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10', action: () => navigateTo('create'), color: 'text-green-400' },
         { key: 'manage_games', title: 'Manage Games', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', action: () => navigateTo('manage_game'), color: 'text-blue-400' },
         { key: 'agents', title: 'Manage Agents', icon: 'M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.14-4.244a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243zm-2.121 9.435A9.094 9.094 0 0112 18c2.828 0 5.378-.888 7.47-2.372A3 3 0 0018 15.045V12H6v3.045A3 3 0 007.879 18.375z', action: () => navigateTo('agent'), color: 'text-purple-400' },
         { key: 'ticket_requests', title: 'Ticket Requests', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', action: () => navigateTo('ticket_requests'), color: 'text-yellow-400' },
-        { key: 'payment_verification', title: 'Payments', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z', action: () => navigateTo('payment_verification'), color: 'text-rose-400' },
         { key: 'analytics', title: 'Analytics', icon: 'M10.5 6a7.5 7.5 0 100 15 7.5 7.5 0 000-15zM10.5 1.5V10.5L18 18', action: () => navigateTo('analytics'), color: 'text-teal-400' },
         { key: 'winner_list', title: 'Winner List', icon: 'M16 18.5v-5.5a4.5 4.5 0 00-9 0v5.5m-1.5 0V13a6 6 0 0112 0v5.5m-6-16v1.5m0 0a2.25 2.25 0 012.25 2.25v1.5a2.25 2.25 0 01-4.5 0v-1.5A2.25 2.25 0 0112 2.5zM9 13.5a3 3 0 116 0 3 3 0 016 0z', action: onShowWinnerList, color: 'text-orange-400' },
+        { key: 'announce', title: 'Announce', icon: 'M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46', action: onAnnounce, color: 'text-pink-400' },
         { key: 'settings', title: 'Settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066 2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z', action: () => navigateTo('settings'), color: 'text-slate-400' },
     ];
 
@@ -586,16 +588,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }, [ticketRequests, agentRequests, payments]);
     
     useEffect(() => {
-        const interval = setInterval(() => {
-            setAnnouncement(prev => {
-                if (settings.announcement?.id !== prev?.id) {
-                    return settings.announcement;
-                }
-                return prev;
-            });
-        }, 1000);
-        return () => clearInterval(interval);
-    }, []);
+        setAnnouncement(settings.announcement);
+    }, [settings.announcement]);
 
     // This effect handles ALL spoken announcements (winners, game events, etc.)
     const lastEventAnnouncementRef = useRef<Record<string, { status: string, isAutoCalling: boolean }>>({});
@@ -817,8 +811,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }, [ongoingGame, handleToggleQueueNumber, toast]);
     
     const handleSendAnnouncement = async (text: string) => {
+        const announcementPayload = { text, id: Date.now() };
         await gameService.sendAnnouncement(text);
-        setAnnouncement(settings.announcement);
+        setAnnouncement(announcementPayload);
         setShowAnnouncementPopup(false);
         toast.show('Announcement sent!');
     };
@@ -832,7 +827,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         isAuthWallOpen.current = false;
         setIsControlPanelUnlocked(true);
 
-        await gameService.toggleAutoCall(gameToStart._id);
+        await gameService.startGame(gameToStart._id);
         toast.show(`Game "${gameToStart.title}" has started!`);
         await fetchGames();
     };
@@ -899,10 +894,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     
     const handleDeleteGameRequest = (gameId: string) => {
         const confirmDelete = async () => {
-            await gameService.deleteGame(gameId);
-            toast.show('Game deleted successfully!');
-            await fetchGames();
-            setConfirmAction(null);
+            try {
+                await gameService.deleteGame(gameId);
+                toast.show('Game deleted successfully!');
+                await fetchGames();
+            } catch (error) {
+                toast.show((error as Error).message, { type: 'error' });
+            } finally {
+                setConfirmAction(null);
+            }
         };
 
         setConfirmAction({
@@ -1003,6 +1003,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             {activeTab === 'dashboard' && <QuickActions 
                                                             navigateTo={onNavigate} 
                                                             onShowWinnerList={() => { if (ongoingGame) { setShowWinnerListPopup(true); } else { toast.show("No active or completed game to show winners for.", { type: 'info' }); } }}
+                                                            onAnnounce={() => setShowAnnouncementPopup(true)}
                                                             pendingTicketRequestCount={pendingTicketRequestCount}
                                                             pendingAgentRequestCount={pendingAgentRequestCount}
                                                             pendingPaymentCount={pendingPaymentCount}
@@ -1010,6 +1011,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             {activeTab === 'dashboard' && <DashboardStats games={games} onNavigate={onNavigate} />}
                         </div>
                         
+                        {activeTab === 'dashboard' && <UpcomingGameCountdown games={games} />}
                         {activeTab === 'dashboard' && <AnnouncementDisplay announcement={announcement} user={user} />}
 
                         {activeTab === 'dashboard' && (
@@ -1056,7 +1058,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         )}
                         {activeTab === 'all_ticket' && <AgentTicketBooking games={games} tickets={tickets} onTicketUpdate={fetchGames} onUnbook={handleUnbookRequest} dbUsers={dbUsers} />}
                         {activeTab === 'my_ticket' && <MyTicketsView games={games} tickets={tickets} user={user} onUnbook={handleUnbookRequest} />}
-
                     </div>
                 );
         }

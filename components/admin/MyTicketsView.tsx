@@ -36,13 +36,40 @@ export const MyTicketsView: React.FC<MyTicketsViewProps> = ({ games, tickets, us
     const fetchMyTickets = useCallback(async () => {
         if (!user) return;
         
-        const bookedTickets = await gameService.getMyTickets(user._id);
-        
-        // Filter out any tickets that might not be fully booked (though getMyTickets should only return booked ones)
-        const approvedTickets = bookedTickets.filter(t => t.status === 'booked');
-        
-        setMyTickets(approvedTickets);
-    }, [user]);
+        try {
+            // Fetch tickets booked by the user
+            const bookedTickets = await gameService.getMyTickets(user._id);
+            
+            // Fetch IDs of tickets tracked by the user
+            const trackedTicketIdsFromDb = await gameService.getMyTrackedTickets(user._id);
+            setTrackedTicketIds(trackedTicketIdsFromDb);
+            
+            // Fetch the actual ticket objects for the tracked IDs
+            const trackedTickets: Ticket[] = [];
+            if (trackedTicketIdsFromDb.length > 0) {
+                // We need to fetch these tickets. Since we have the full list of tickets in props, we can filter them.
+                const tracked = tickets.filter(t => trackedTicketIdsFromDb.includes(t._id));
+                trackedTickets.push(...tracked);
+            }
+            
+            // Combine booked and tracked tickets, avoiding duplicates
+            const combinedTickets = [...bookedTickets];
+            trackedTickets.forEach(tt => {
+                if (!combinedTickets.some(bt => bt._id === tt._id)) {
+                    combinedTickets.push(tt);
+                }
+            });
+            
+            // Filter out any tickets that might not be fully booked (though getMyTickets should only return booked ones)
+            // But tracked tickets might be 'available'
+            const validTickets = combinedTickets.filter(t => t.status === 'booked' || trackedTicketIdsFromDb.includes(t._id));
+            
+            setMyTickets(validTickets);
+        } catch (error) {
+            console.error("Error fetching my tickets:", error);
+            toast.show('Failed to load your tickets.', { type: 'error' });
+        }
+    }, [user, tickets, toast]);
 
     useEffect(() => {
         fetchMyTickets();
@@ -58,6 +85,12 @@ export const MyTicketsView: React.FC<MyTicketsViewProps> = ({ games, tickets, us
         // If the ticket is tracked (and not booked by me), untracking it should remove it from the view.
         if (isTracked && !isBookedByMe) {
             setMyTickets(prev => prev.filter(t => t._id !== ticketId));
+        } else if (!isTracked) {
+            // If we are tracking a new ticket, find it in the tickets list and add it to the view.
+            const ticketToTrack = tickets.find(t => t._id === ticketId);
+            if (ticketToTrack) {
+                setMyTickets(prev => [...prev, ticketToTrack]);
+            }
         }
         setTrackedTicketIds(prev => isTracked ? prev.filter(id => id !== ticketId) : [...prev, ticketId]);
     

@@ -98,8 +98,7 @@ const AppRouter: React.FC<AppRouterProps> = ({
 };
 
 const AppLoader: React.FC<{ connectionStatus: 'connected' | 'reconnecting' | 'disconnected' }> = ({ connectionStatus }) => {
-    const { isAuthReady, firebaseUser } = useAuth();
-    const isAuthFailed = isAuthReady && !firebaseUser;
+    const { isAuthReady } = useAuth();
 
     const statusInfo = {
         connected: { text: 'Connected! Loading Game...', borderColor: 'border-green-500' },
@@ -118,28 +117,18 @@ const AppLoader: React.FC<{ connectionStatus: 'connected' | 'reconnecting' | 'di
           </h1>
           <p className="text-lg text-slate-300">{currentStatus.text}</p>
           <div className={`mt-8 w-16 h-16 border-4 border-dashed rounded-full animate-spin ${currentStatus.borderColor}`}></div>
-          
-          {isAuthFailed && (
-            <div className="mt-12 max-w-xs text-center p-4 bg-red-900/20 border border-red-500/30 rounded-xl animate-fade-in">
-                <p className="text-red-400 text-sm font-bold mb-2">Authentication Error</p>
-                <p className="text-gray-300 text-xs leading-relaxed">
-                    Anonymous Auth is disabled in your Firebase Console. 
-                    Please enable it to allow data synchronization and guest access.
-                </p>
-            </div>
-          )}
         </div>
     );
 };
 
 function AppContent({ settings, setSettings }: { settings: any, setSettings: (s: any) => void }) {
-    const { user, originalUser, loginAsPlayer, isAuthReady, firebaseUser } = useAuth();
-    const isAuthFailed = isAuthReady && !firebaseUser;
+    const { user, originalUser, loginAsPlayer, isAuthReady } = useAuth();
     const [showIntro, setShowIntro] = useState(true);
     const initPromiseRef = useRef<Promise<void> | null>(null);
     const [page, setPage] = useState('dashboard');
     const [editingGame, setEditingGame] = useState<Game | null>(null);
     const { activeTheme, getThemeClasses, getThemeStyle } = useTheme();
+    const hasAutoLoggedInRef = useRef(false);
 
     const [games, setGames] = useState<Game[]>([]);
     const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -164,7 +153,8 @@ function AppContent({ settings, setSettings }: { settings: any, setSettings: (s:
         const path = window.location.pathname.replace(/\/$/, '');
         const isAuthPath = path === '/admin' || path === '/agent';
         // Auto-login as player if not on an auth path and auth is ready but no user is logged in
-        if (isAuthReady && !user && !isAuthPath) {
+        if (isAuthReady && !user && !isAuthPath && !hasAutoLoggedInRef.current) {
+            hasAutoLoggedInRef.current = true;
             loginAsPlayer();
         }
     }, [isAuthReady, user, loginAsPlayer]);
@@ -304,11 +294,6 @@ function AppContent({ settings, setSettings }: { settings: any, setSettings: (s:
 
     return (
         <div className={appContainerClasses} style={appContainerStyle}>
-            {isAuthFailed && (
-                <div className="fixed top-0 left-0 right-0 z-[9999] bg-red-600 text-white text-[10px] py-1 px-4 text-center font-bold shadow-lg animate-pulse">
-                    ⚠️ Anonymous Auth is disabled in Firebase Console. Please enable it to allow data sync.
-                </div>
-            )}
             {renderAppContent()}
         </div>
     );

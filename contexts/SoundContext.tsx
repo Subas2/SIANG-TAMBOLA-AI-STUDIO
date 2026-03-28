@@ -205,9 +205,17 @@ export const SoundProvider: React.FC<{ children: ReactNode; settings?: any }> = 
                     const number = options.number;
                     if (typeof number === 'number') {
                         // Speech Synthesis Logic
-                        let textToSpeak = `Number ${number}`;
+                        const getSpokenNumber = (num: number) => {
+                            const digits = num.toString().split('');
+                            if (digits.length === 1) return digits[0];
+                            return digits.join(' ');
+                        };
+                        
+                        const spokenNum = getSpokenNumber(number);
+                        let textToSpeak = `Number ${number}, ${spokenNum}`;
+                        
                         if (options.isRhyme && rhymes[number]) {
-                            textToSpeak = rhymes[number];
+                            textToSpeak = `Number ${number}, ${spokenNum} – ${rhymes[number]}`;
                         }
                         
                         // Tone.js Sound Logic

@@ -229,10 +229,10 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate, currentPage, connect
                             <div className="max-h-80 overflow-y-auto">
                                 {(notifications || []).length > 0 ? (
                                     notifications.map(notif => (
-                                        <button
+                                        <div
                                             key={notif.id}
+                                            className="w-full text-left px-3 py-2.5 hover:bg-slate-700/50 flex items-start gap-3 cursor-pointer"
                                             onClick={() => { if (notif.page) { onNavigate(notif.page); } setIsNotificationPanelOpen(false); }}
-                                            className="w-full text-left px-3 py-2.5 hover:bg-slate-700/50 flex items-start gap-3"
                                         >
                                             <div className="p-1 bg-slate-900/50 rounded-full flex-shrink-0">
                                                 {getNotificationIcon(notif.type)}
@@ -250,7 +250,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate, currentPage, connect
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                                 </svg>
                                             </button>
-                                        </button>
+                                        </div>
                                     ))
                                 ) : (
                                     <p className="text-sm text-gray-400 text-center py-6">No new notifications</p>
@@ -297,9 +297,9 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate, currentPage, connect
                                             <div className="border-t border-slate-700 my-1">
                                                 <div className="px-4 pt-2 pb-1 text-xs text-gray-400 uppercase">View As</div>
                                                 <div className="max-h-48 overflow-y-auto">
-                                                    {usersToView.map(otherUser => (
+                                                    {usersToView.map((otherUser, index) => (
                                                         <button
-                                                            key={otherUser._id}
+                                                            key={`${otherUser._id}-${index}`}
                                                             onClick={() => { switchUserView(otherUser._id); setIsUserMenuOpen(false); }}
                                                             className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-slate-700 flex items-center gap-2"
                                                         >
@@ -316,7 +316,14 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate, currentPage, connect
                                     <>
                                         <div className="border-t border-slate-700 my-1"></div>
                                         <button
-                                            onClick={() => { logout(); setIsUserMenuOpen(false); }}
+                                            onClick={() => { 
+                                                const role = user.role;
+                                                logout(); 
+                                                setIsUserMenuOpen(false); 
+                                                if (role === 'admin') window.location.href = '/admin';
+                                                else if (role === 'agent') window.location.href = '/agent';
+                                                else window.location.href = '/';
+                                            }}
                                             className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/20 hover:text-red-300 flex items-center gap-2"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>

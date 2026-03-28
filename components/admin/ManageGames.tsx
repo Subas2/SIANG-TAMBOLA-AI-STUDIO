@@ -26,24 +26,83 @@ const formatDateTime = (dateStr: string, timeStr: string) => {
 };
 
 
+const CountdownTimer: React.FC<{ targetDate: string, targetTime: string }> = ({ targetDate, targetTime }) => {
+    const [timeLeft, setTimeLeft] = useState<string>('');
+
+    useEffect(() => {
+        const calculateTimeLeft = () => {
+            const dateTimeString = targetTime.includes('M') ? `${targetDate} ${targetTime}` : `${targetDate}T${targetTime}`;
+            const target = new Date(dateTimeString).getTime();
+            const now = new Date().getTime();
+            const difference = target - now;
+
+            if (difference <= 0) {
+                setTimeLeft('Starting soon...');
+                return;
+            }
+
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+            let timeStr = '';
+            if (days > 0) timeStr += `${days}d `;
+            if (hours > 0 || days > 0) timeStr += `${hours}h `;
+            timeStr += `${minutes}m ${seconds}s`;
+            setTimeLeft(timeStr);
+        };
+
+        calculateTimeLeft();
+        const timer = setInterval(calculateTimeLeft, 1000);
+        return () => clearInterval(timer);
+    }, [targetDate, targetTime]);
+
+    return (
+        <div className="flex items-center gap-1.5 text-amber-400 font-mono text-xs bg-amber-400/10 px-2 py-1 rounded-md border border-amber-400/20">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Starts in: {timeLeft}</span>
+        </div>
+    );
+};
+
 export const ManageGames: React.FC<ManageGamesProps> = React.memo(({ games, tickets, onViewGame, onEditGame, onDeleteRequest, onTicketsGenerated, onShareRequest }) => {
     const toast = useToast();
     const [loadingTicketGameId, setLoadingTicketGameId] = useState<string | null>(null);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-    const [activeTab, setActiveTab] = useState<'upcoming' | 'completed'>('upcoming');
+    const [activeTab, setActiveTab] = useState<'upcoming' | 'ongoing' | 'completed'>('upcoming');
 
     const filteredGames = useMemo(() => {
         if (activeTab === 'upcoming') {
             return games
-                .filter(g => g.status === 'upcoming' || g.status === 'ongoing')
+                .filter(g => g.status === 'upcoming')
                 .sort((a, b) => {
-                    if (a.status === 'ongoing' && b.status !== 'ongoing') return -1;
-                    if (a.status !== 'ongoing' && b.status === 'ongoing') return 1;
                     const aDateTime = new Date(`${a.date} ${a.time}`).getTime();
                     const bDateTime = new Date(`${b.date} ${b.time}`).getTime();
                     return aDateTime - bDateTime;
                 });
+        } else if (activeTab === 'ongoing') {
+            const ongoing = games.filter(g => g.status === 'ongoing');
+            const upcoming = games
+                .filter(g => g.status === 'upcoming')
+                .sort((a, b) => {
+                    const aDateTime = new Date(`${a.date} ${a.time}`).getTime();
+                    const bDateTime = new Date(`${b.date} ${b.time}`).getTime();
+                    return aDateTime - bDateTime;
+                });
+            
+            const nearestUpcoming = upcoming.length > 0 ? [upcoming[0]] : [];
+            
+            return [...ongoing, ...nearestUpcoming].sort((a, b) => {
+                if (a.status === 'ongoing' && b.status !== 'ongoing') return -1;
+                if (a.status !== 'ongoing' && b.status === 'ongoing') return 1;
+                const aDateTime = new Date(`${a.date} ${a.time}`).getTime();
+                const bDateTime = new Date(`${b.date} ${b.time}`).getTime();
+                return aDateTime - bDateTime;
+            });
         } else { // 'completed'
             return games
                 .filter(g => g.status === 'completed')
@@ -111,7 +170,13 @@ export const ManageGames: React.FC<ManageGamesProps> = React.memo(({ games, tick
                     onClick={() => setActiveTab('upcoming')}
                     className={`w-full text-center py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === 'upcoming' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:bg-slate-700'}`}
                 >
-                    Upcoming & Ongoing
+                    Upcoming
+                </button>
+                <button
+                    onClick={() => setActiveTab('ongoing')}
+                    className={`w-full text-center py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === 'ongoing' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:bg-slate-700'}`}
+                >
+                    Ongoing
                 </button>
                 <button
                     onClick={() => setActiveTab('completed')}
@@ -149,16 +214,30 @@ export const ManageGames: React.FC<ManageGamesProps> = React.memo(({ games, tick
                                 </div>
                                 
                                 <div
-                                    onClick={() => onViewGame(game)} 
-                                    className="w-full text-left p-4 flex flex-col flex-grow cursor-pointer rounded-xl hover:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
-                                    aria-label={`View details for ${game.title}`}
+                                    onClick={() => {
+                                        if (game.status === 'ongoing') {
+                                            onViewGame(game);
+                                        } else {
+                                            toast.show("Use the menu (⋮) to start or manage this game.", { type: 'info' });
+                                        }
+                                    }} 
+                                    className={`w-full text-left p-4 flex flex-col flex-grow cursor-pointer rounded-xl hover:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${game.status === 'upcoming' ? 'cursor-default' : ''}`}
+                                    aria-label={game.status === 'ongoing' ? `Go to Control Panel for ${game.title}` : `View details for ${game.title}`}
                                 >
                                     <div className="flex-grow">
-                                        <h3 className="font-bold text-lg text-gray-100 pr-8 truncate">{game.title}</h3>
+                                        <div className="flex justify-between items-start">
+                                            <h3 className="font-bold text-lg text-gray-100 pr-8 truncate">{game.title}</h3>
+                                        </div>
                                         
-                                        <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mt-2 text-xs">
+                                        <div className="flex items-center flex-wrap gap-x-2 gap-y-2 mt-2 text-xs">
                                             <span className={`px-2 py-0.5 font-semibold rounded-full capitalize ${statusClasses[game.status]}`}>
                                                 {game.status}
+                                            </span>
+                                            {game.status === 'upcoming' && activeTab === 'ongoing' && (
+                                                <CountdownTimer targetDate={game.date} targetTime={game.time} />
+                                            )}
+                                            <span className={`px-2 py-0.5 font-semibold rounded-full capitalize ${game.isBookingOpen ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}`}>
+                                                Booking {game.isBookingOpen ? 'Open' : 'Closed'}
                                             </span>
                                             <span className="text-gray-400">{date} • {time}</span>
                                             <span className="text-gray-400">|</span>
@@ -219,7 +298,7 @@ export const ManageGames: React.FC<ManageGamesProps> = React.memo(({ games, tick
                     })}
                 </div>
             ) : (
-                 <p className="text-gray-400 text-center py-8">No {activeTab === 'upcoming' ? 'upcoming or ongoing' : 'completed'} games found.</p>
+                 <p className="text-gray-400 text-center py-8">No {activeTab === 'upcoming' ? 'upcoming' : activeTab === 'ongoing' ? 'ongoing' : 'completed'} games found.</p>
             )}
         </div>
     );

@@ -12,13 +12,14 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && 
-        ((request.auth.token.email == "www.subashkaman2018s@gmail.com" && request.auth.token.email_verified == true) ||
-         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+        ((('email' in request.auth.token) && request.auth.token.email == "www.subashkaman2018s@gmail.com" && ('email_verified' in request.auth.token) && request.auth.token.email_verified == true) ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && ('role' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
     }
 
     function isAgentRole() {
       return isAuthenticated() && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        ('role' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent';
     }
 
@@ -57,9 +58,9 @@ service cloud.firestore {
     
     // Users collection
     match /users/{userId} {
-      allow read: if isAdmin() || isOwner(userId) || resource.data.role == 'agent' || isAgentRole();
-      allow create: if isAdmin() || isOwner(userId) || (isAgentRole() && request.resource.data.role == 'player') || (isAuthenticated() && request.resource.data.role == 'player');
-      allow update: if isAdmin() || isOwner(userId) || (isAgentRole() && resource.data.role == 'player' && request.resource.data.role == 'player');
+      allow read: if isAdmin() || isOwner(userId) || (isAuthenticated() && resource != null && (resource.data.role == 'agent' || resource.data.role == 'admin'));
+      allow create: if isAdmin() || isOwner(userId) || (isAgentRole() && ('role' in request.resource.data) && request.resource.data.role == 'player') || (isAuthenticated() && ('role' in request.resource.data) && request.resource.data.role == 'player');
+      allow update: if isAdmin() || isOwner(userId) || (isAgentRole() && ('role' in resource.data) && resource.data.role == 'player' && ('role' in request.resource.data) && request.resource.data.role == 'player');
       allow delete: if isAdmin();
     }
 
@@ -78,17 +79,15 @@ service cloud.firestore {
     // Ticket Requests collection
     match /ticket_requests/{requestId} {
       allow read: if isAdmin() || 
-                    (isAuthenticated() && (
-                      (resource.data.agentId == request.auth.uid) || 
-                      (resource.data.playerId == request.auth.uid)
-                    ));
+                    (isAuthenticated() && resource != null && resource.data.agentId == request.auth.uid) || 
+                    (isAuthenticated() && resource != null && resource.data.playerId == request.auth.uid);
       allow create: if isAuthenticated();
       allow update: if isAdmin() || (isAuthenticated() && resource.data.agentId == request.auth.uid);
     }
 
     // Agent Requests collection
     match /agent_requests/{requestId} {
-      allow read: if isAdmin() || (isAuthenticated() && resource.data.playerId == request.auth.uid);
+      allow read: if isAdmin() || (isAuthenticated() && resource != null && resource.data.playerId == request.auth.uid);
       allow create: if isAuthenticated();
       allow update: if isAdmin();
     }
@@ -96,19 +95,17 @@ service cloud.firestore {
     // Payments collection
     match /payments/{paymentId} {
       allow read: if isAdmin() || 
-                    (isAuthenticated() && (
-                      (resource.data.agentId == request.auth.uid) || 
-                      (resource.data.playerId == request.auth.uid)
-                    ));
+                    (isAuthenticated() && resource != null && resource.data.agentId == request.auth.uid) || 
+                    (isAuthenticated() && resource != null && resource.data.playerId == request.auth.uid);
       allow create: if isAuthenticated();
       allow update: if isAdmin() || (isAuthenticated() && resource.data.agentId == request.auth.uid);
     }
 
     // Tracked Tickets collection
     match /tracked_tickets/{id} {
-      allow read: if isAdmin() || (isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid));
+      allow read: if isAdmin() || (isAuthenticated() && resource != null && resource.data.userId == request.auth.uid);
       allow create: if isAdmin() || (isAuthenticated() && request.resource.data.userId == request.auth.uid);
-      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource != null && resource.data.userId == request.auth.uid);
     }
   }
 }

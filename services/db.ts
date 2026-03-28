@@ -1,7 +1,7 @@
 import { db, auth } from '../firebase';
 import { 
   collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, 
-  query, where, onSnapshot, addDoc, DocumentData, QueryConstraint
+  query, where, onSnapshot, addDoc, DocumentData, QueryConstraint, writeBatch
 } from 'firebase/firestore';
 
 enum OperationType {
@@ -60,12 +60,17 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
  */
 const serializeData = (data: any) => {
   if (!data || typeof data !== 'object') return data;
-  const processed = { ...data };
-  for (const key in processed) {
-    const value = processed[key];
+  const processed: any = {};
+  for (const key in data) {
+    const value = data[key];
+    // Firestore does not support undefined values
+    if (value === undefined) continue;
+    
     // Check for nested arrays (e.g., [[1,2], [3,4]])
     if (Array.isArray(value) && value.some(item => Array.isArray(item))) {
       processed[key] = JSON.stringify(value);
+    } else {
+      processed[key] = value;
     }
   }
   return processed;
@@ -117,7 +122,12 @@ export const dbService = {
       if (!snapshot.exists()) return null;
       return deserializeData({ id: snapshot.id, ...snapshot.data() });
     } catch (error) {
+      if (error instanceof Error && error.message.includes('Missing or insufficient permissions')) {
+        console.warn(`Permission denied for document ${collectionName}/${id}`);
+        return null;
+      }
       handleFirestoreError(error, OperationType.GET, `${collectionName}/${id}`);
+      return null;
     }
   },
 
@@ -128,7 +138,12 @@ export const dbService = {
       const docRef = await addDoc(colRef, serializedData);
       return { id: docRef.id, ...data };
     } catch (error) {
+      if (error instanceof Error && error.message.includes('Missing or insufficient permissions')) {
+        console.warn(`Permission denied for adding document to ${collectionName}`);
+        return null;
+      }
       handleFirestoreError(error, OperationType.CREATE, collectionName);
+      return null;
     }
   },
 
@@ -139,7 +154,12 @@ export const dbService = {
       await updateDoc(docRef, serializedData);
       return { id, ...data };
     } catch (error) {
+      if (error instanceof Error && error.message.includes('Missing or insufficient permissions')) {
+        console.warn(`Permission denied for updating document ${collectionName}/${id}`);
+        return null;
+      }
       handleFirestoreError(error, OperationType.UPDATE, `${collectionName}/${id}`);
+      return null;
     }
   },
 
@@ -150,7 +170,12 @@ export const dbService = {
       await setDoc(docRef, serializedData, { merge: true });
       return { id, ...data };
     } catch (error) {
+      if (error instanceof Error && error.message.includes('Missing or insufficient permissions')) {
+        console.warn(`Permission denied for upserting document ${collectionName}/${id}`);
+        return null;
+      }
       handleFirestoreError(error, OperationType.WRITE, `${collectionName}/${id}`);
+      return null;
     }
   },
 
@@ -161,6 +186,52 @@ export const dbService = {
       return id;
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `${collectionName}/${id}`);
+    }
+  },
+
+  async batchAddDocuments(collectionName: string, dataList: any[]) {
+    try {
+      const chunks = [];
+      for (let i = 0; i < dataList.length; i += 500) {
+        chunks.push(dataList.slice(i, i + 500));
+      }
+
+      for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        chunk.forEach(data => {
+          const serializedData = serializeData(data);
+          const colRef = collection(db, collectionName);
+          const docRef = doc(colRef);
+          batch.set(docRef, serializedData);
+        });
+        await batch.commit();
+      }
+      return true;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, collectionName);
+      return false;
+    }
+  },
+
+  async batchDeleteDocuments(collectionName: string, ids: string[]) {
+    try {
+      const chunks = [];
+      for (let i = 0; i < ids.length; i += 500) {
+        chunks.push(ids.slice(i, i + 500));
+      }
+
+      for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        chunk.forEach(id => {
+          const docRef = doc(db, collectionName, id);
+          batch.delete(docRef);
+        });
+        await batch.commit();
+      }
+      return true;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, collectionName);
+      return false;
     }
   },
 

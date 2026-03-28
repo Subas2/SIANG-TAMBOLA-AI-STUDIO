@@ -7,11 +7,11 @@ import { TambolaBoard } from '../common/TambolaBoard';
 import { TimeControlBar } from '../common/TimeControlBar';
 import { DividendsList } from '../common/DividendsList';
 import { AnnouncementDisplay } from '../common/AnnouncementDisplay';
+import UpcomingGameCountdown from '../common/UpcomingGameCountdown';
 import { AllTicketsView } from './AllTicketsView';
 import { MyTicketsView } from '../admin/MyTicketsView';
 import { WinnerList } from '../common/WinnerList';
 import { AgentRequestFormPopup } from './AgentRequestFormPopup';
-import { TicketRequestFormPopup } from './TicketRequestFormPopup';
 import { useToast } from '../../contexts/ToastContext';
 import { WinnerPopup } from '../common/WinnerPopup';
 import { useSound } from '../../contexts/SoundContext';
@@ -173,7 +173,6 @@ export const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ games, tickets
     const [isMuted, setIsMuted] = useState(false);
     const [latestWinner, setLatestWinner] = useState<{ playerName: string; prizeName: string; } | null>(null);
     const [showAgentRequestForm, setShowAgentRequestForm] = useState(false);
-    const [showTicketRequestForm, setShowTicketRequestForm] = useState(false);
     const [countdown, setCountdown] = useState(0);
     const [timerTotalDuration, setTimerTotalDuration] = useState(settings.callDelay);
     const prevCycleEndsAt = useRef(0);
@@ -391,21 +390,9 @@ export const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ games, tickets
         }
     };
 
-    const handleSubmitTicketRequest = async (formData: Omit<TicketRequest, '_id' | 'status' | 'created_at'>) => {
-        if (!user) return;
-
-        try {
-            await api.player.requestTickets(formData);
-            toast.show('Your ticket request has been submitted for review!', { type: 'success' });
-            setShowTicketRequestForm(false);
-        } catch (error) {
-            toast.show((error as Error).message, { type: 'error' });
-        }
-    };
-
     if (!user) return null;
     
-    const mainTabViews = ['dashboard', 'all_tickets', 'my_tickets'];
+    const mainTabViews = ['dashboard', 'all_tickets'];
     const isMainTabView = mainTabViews.includes(page);
     
     const renderContent = () => {
@@ -428,7 +415,7 @@ export const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ games, tickets
             case 'all_tickets':
                 return <AllTicketsView games={games} tickets={tickets} onTicketUpdate={onTicketUpdate} settings={settings} />;
             case 'my_tickets':
-                return <MyTicketsView games={games} tickets={tickets} user={user} />;
+                return <MyTicketsView games={games} tickets={tickets} user={user} onUnbook={() => {}} />;
             case 'community':
                 return <CommunityLinks />;
              case 'leaderboard':
@@ -443,6 +430,7 @@ export const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ games, tickets
                                 onRequestTicket={() => onNavigate('all_tickets')}
                             />
                         <PlayerRecentActivity games={games} tickets={tickets} claims={claims} />
+                        <UpcomingGameCountdown games={games} />
                         <AnnouncementDisplay announcement={announcement} user={user} />
 
                          <div className="mt-2 bg-slate-800/60 backdrop-blur-md p-4 rounded-lg shadow-lg border border-slate-700">
@@ -498,15 +486,6 @@ export const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ games, tickets
                 onSubmit={handleSubmitAgentRequest} 
             />
             
-            <TicketRequestFormPopup
-                isOpen={showTicketRequestForm}
-                onClose={() => setShowTicketRequestForm(false)}
-                user={user}
-                games={games}
-                dbUsers={dbUsers}
-                onSubmit={handleSubmitTicketRequest}
-            />
-
             {ongoingGame && user && (
                 <DraggableModal
                     isOpen={isChatOpen}

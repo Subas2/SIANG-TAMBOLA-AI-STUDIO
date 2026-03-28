@@ -64,7 +64,9 @@ export interface Game {
   tickets: string[];
   calledNumbers: number[];
   isAutoCalling: boolean;
-  callMode: 'auto' | 'mix';
+  callMode: 'auto' | 'manual' | 'mix';
+  callDelay: number;
+  useRhymes: boolean;
   manualQueue: number[];
   cycleEndsAt: number | null;
   cycleStartedAt?: number | null;
@@ -72,6 +74,7 @@ export interface Game {
   agentCommission: number;
   remainingTimeOnPause?: number | null;
   isPausedForAnnouncement?: boolean;
+  preGameCountdownEndsAt?: number | null;
   autoVerifyClaims?: boolean;
   chatMessages: ChatMessage[];
   announcements?: { text: string; timestamp: number }[];
@@ -153,7 +156,7 @@ export interface Payment {
 
 export interface Settings {
     id: string;
-    callMode: 'auto' | 'mix';
+    callMode: 'auto' | 'manual' | 'mix';
     callDelay: number;
     voiceURI: string | null;
     callPitch?: number;

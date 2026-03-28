@@ -3,6 +3,45 @@ import { Game, Ticket } from '../types';
 import { where } from 'firebase/firestore';
 
 export const gameService = {
+  async startGame(gameId: string) {
+    const countdownDuration = 10000;
+    const preGameCountdownEndsAt = Date.now() + countdownDuration;
+    await dbService.updateDocument('games', gameId, {
+      status: 'ongoing',
+      isAutoCalling: true,
+      preGameCountdownEndsAt,
+      announcements: [{ text: 'Game will start now, get ready everyone', timestamp: Date.now() }]
+    });
+  },
+
+  async pauseGame(gameId: string) {
+    const game = await dbService.getDocument('games', gameId) as Game;
+    const remainingTime = game.cycleEndsAt ? game.cycleEndsAt - Date.now() : null;
+    await dbService.updateDocument('games', gameId, { 
+      isAutoCalling: false,
+      remainingTimeOnPause: remainingTime
+    });
+  },
+
+  async resumeGame(gameId: string) {
+    const game = await dbService.getDocument('games', gameId) as Game;
+    const newCycleEndsAt = game.remainingTimeOnPause ? Date.now() + game.remainingTimeOnPause : Date.now() + (game.callDelay || 5) * 1000;
+    await dbService.updateDocument('games', gameId, { 
+      isAutoCalling: true, 
+      isPausedForAnnouncement: false,
+      cycleEndsAt: newCycleEndsAt,
+      cycleStartedAt: Date.now(),
+      remainingTimeOnPause: null
+    });
+  },
+
+  async callNumberManually(gameId: string, number: number) {
+    const game = await dbService.getDocument('games', gameId) as Game;
+    if (!game || (game.calledNumbers || []).includes(number)) return;
+    const newQueue = [...(game.manualQueue || []), number];
+    await dbService.updateDocument('games', gameId, { manualQueue: newQueue });
+  },
+
   async endGame(gameId: string) {
     await dbService.updateDocument('games', gameId, { status: 'completed', isAutoCalling: false });
   },
@@ -33,10 +72,7 @@ export const gameService = {
   },
 
   async sendAnnouncement(text: string) {
-    const settings = await dbService.getCollection('settings');
-    if (settings.length > 0) {
-      await dbService.updateDocument('settings', settings[0].id, { announcement: { text, id: Date.now() } });
-    }
+    await dbService.upsertDocument('settings', 'settings_id', { announcement: { text, id: Date.now() } });
   },
 
   async toggleAutoCall(gameId: string) {
@@ -85,10 +121,7 @@ export const gameService = {
   },
 
   async updateSettings(settings: any) {
-    const settingsList = await dbService.getCollection('settings');
-    if (settingsList.length > 0) {
-      await dbService.updateDocument('settings', settingsList[0].id, settings);
-    }
+    await dbService.upsertDocument('settings', 'settings_id', settings);
   },
 
   async getMyTickets(userId: string): Promise<Ticket[]> {

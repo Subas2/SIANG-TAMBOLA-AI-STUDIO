@@ -688,7 +688,7 @@ export const AgentManagement: React.FC<AgentManagementProps> = ({ onBack, games,
 
                 <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
                     {activeTab === 'all_agents' && (
-                        (agents || []).length > 0 ? (agents || []).map(agent => (
+                        (agents || []).length > 0 ? (agents || []).map((agent) => (
                             <div key={agent._id} onClick={() => setSelectedAgent(agent)} className="bg-slate-700/50 p-2 rounded-md flex justify-between items-center hover:bg-slate-700 transition-colors cursor-pointer">
                                 <div className="flex items-center gap-3">
                                     <img src={agent.photo} alt={agent.name} className="w-10 h-10 rounded-full object-cover" loading="lazy" />
@@ -705,8 +705,8 @@ export const AgentManagement: React.FC<AgentManagementProps> = ({ onBack, games,
                         )) : <p className="text-gray-400 text-center py-4">No agents have been added.</p>
                     )}
                      {activeTab === 'active_agents' && (
-                        (activeAgents || []).length > 0 ? (activeAgents || []).map(agent => (
-                            <div key={agent._id} onClick={() => setSelectedAgent(agent)} className="bg-slate-700/50 p-2 rounded-md flex justify-between items-center hover:bg-slate-700 transition-colors cursor-pointer">
+                        (activeAgents || []).length > 0 ? (activeAgents || []).map((agent, index) => (
+                            <div key={`${agent._id}-${index}`} onClick={() => setSelectedAgent(agent)} className="bg-slate-700/50 p-2 rounded-md flex justify-between items-center hover:bg-slate-700 transition-colors cursor-pointer">
                                 <div className="flex items-center gap-3">
                                     <img src={agent.photo} alt={agent.name} className="w-10 h-10 rounded-full object-cover" loading="lazy" />
                                     <div>
@@ -722,8 +722,8 @@ export const AgentManagement: React.FC<AgentManagementProps> = ({ onBack, games,
                         )) : <p className="text-gray-400 text-center py-4">No agents have activity in upcoming or ongoing games.</p>
                     )}
                      {activeTab === 'requests' && (
-                        (requests || []).length > 0 ? (requests || []).map(req => (
-                             <div key={req._id} className="bg-slate-700/50 p-3 rounded-lg flex flex-col sm:flex-row justify-between sm:items-center hover:bg-slate-700 transition-colors">
+                        (requests || []).length > 0 ? (requests || []).map((req, index) => (
+                             <div key={`${req._id}-${index}`} className="bg-slate-700/50 p-3 rounded-lg flex flex-col sm:flex-row justify-between sm:items-center hover:bg-slate-700 transition-colors">
                                 <div className="flex items-center gap-3">
                                     <img src={req.photo} alt={req.name} className="w-12 h-12 rounded-full object-cover" loading="lazy" />
                                     <div>

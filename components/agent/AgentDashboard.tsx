@@ -7,6 +7,7 @@ import { TambolaBoard } from '../common/TambolaBoard';
 import { TimeControlBar } from '../common/TimeControlBar';
 import { DividendsList } from '../common/DividendsList';
 import { AnnouncementDisplay } from '../common/AnnouncementDisplay';
+import UpcomingGameCountdown from '../common/UpcomingGameCountdown';
 import { AgentTicketBooking } from './AgentTicketBooking';
 import { MyTicketsView } from '../admin/MyTicketsView';
 import { TicketRequests } from '../admin/TicketRequests';
@@ -15,7 +16,6 @@ import { WinnerPopup } from '../common/WinnerPopup';
 import { useSound } from '../../contexts/SoundContext';
 import { useSpeech } from '../../contexts/SpeechContext';
 import { DashboardTabs } from '../common/DashboardTabs';
-import { AgentBookings } from './AgentBookings';
 import { AgentAnalytics } from './AgentAnalytics';
 import { CommunityLinks } from '../common/CommunityLinks';
 import { rhymes } from '../../constants';
@@ -423,7 +423,7 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({ games, tickets, 
 
     if (!user) return null;
 
-    const mainTabViews = ['dashboard', 'all_tickets', 'my_tickets'];
+    const mainTabViews = ['dashboard', 'all_tickets'];
     const isMainTabView = mainTabViews.includes(page);
 
     const availableGamesForBooking = games.filter(g => ['upcoming', 'ongoing'].includes(g.status));
@@ -450,9 +450,7 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({ games, tickets, 
             case 'all_tickets':
                 return <AgentTicketBooking games={games} tickets={tickets} onTicketUpdate={onTicketUpdate} dbUsers={dbUsers} />;
             case 'my_tickets':
-                return <MyTicketsView games={games} tickets={tickets} user={user} />;
-            case 'my_bookings':
-                return <AgentBookings searchTerm="" selectedGameId={ongoingGame?._id || ''} games={games} tickets={tickets} dbUsers={dbUsers} />;
+                return <MyTicketsView games={games} tickets={tickets} user={user} onUnbook={() => {}} />;
             case 'leaderboard':
                 return <Leaderboard onBack={() => onNavigate('dashboard')} showBackButton={false} />;
             case 'dashboard':
@@ -467,6 +465,7 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({ games, tickets, 
                             />
                         </div>
 
+                        <UpcomingGameCountdown games={games} />
                         <AnnouncementDisplay announcement={announcement} user={user} />
 
                         <div className="mt-2 bg-slate-800/60 backdrop-blur-md p-4 rounded-lg shadow-lg border border-slate-700">

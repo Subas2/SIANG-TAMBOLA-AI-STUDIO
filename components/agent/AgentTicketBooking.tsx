@@ -395,7 +395,7 @@ export const AgentTicketBooking: React.FC<AgentTicketBookingProps> = ({ games, t
                     dbUsers={dbUsers}
                 />
             )}
-            
+
             <BookingFormPopup
                 isOpen={!!bookingInfo}
                 onClose={handleCloseBooking}

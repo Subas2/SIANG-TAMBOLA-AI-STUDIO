@@ -16,7 +16,7 @@ interface AuthContextType {
   originalUser: User | null;
   login: (username: string, password: string) => Promise<AuthResult>;
   loginAsPlayer: () => Promise<AuthResult>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (updatedUserData: Partial<User>) => void;
   switchUserView: (userId: string) => void;
   revertUserView: () => void;
@@ -53,6 +53,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [firebaseUser, setFirebaseUser] = useState<any>(null);
 
+  const syncUser = useCallback(() => {
+    const firebaseUser = auth.currentUser;
+
+    if (firebaseUser) {
+        // Try to find user in mockDB by uid (for Google users) or username (for anonymous admins)
+        const foundUser = mockDB.users.find(u => 
+            u._id === firebaseUser.uid || 
+            (firebaseUser.displayName && u.username === firebaseUser.displayName)
+        );
+        
+        // Use functional update to avoid dependency on 'user' state
+        if (foundUser) {
+            setUser(prevUser => {
+                if (!prevUser || prevUser._id !== foundUser._id) {
+                    console.log("Syncing user state with Firebase user:", foundUser.username);
+                    return foundUser;
+                }
+                return prevUser;
+            });
+        }
+    }
+  }, []);
+
+  const safeSignInAnonymously = useCallback(async (retries = 3, delay = 1000) => {
+    for (let i = 0; i < retries; i++) {
+        try {
+            console.log(`Attempting anonymous sign-in (attempt ${i + 1}/${retries})...`);
+            const result = await signInAnonymously(auth);
+            console.log("Anonymous sign-in successful.");
+            return result;
+        } catch (err: any) {
+            console.warn(`Anonymous sign-in attempt ${i + 1} failed:`, err.code || err.message);
+            if (err.code === 'auth/network-request-failed' && i < retries - 1) {
+                console.log(`Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2; // Exponential backoff
+                continue;
+            }
+            throw err;
+        }
+    }
+    throw new Error("Max retries reached for anonymous sign-in.");
+  }, []);
+
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -62,14 +106,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         if (!auth.currentUser) {
           console.log("No Firebase user on init. Attempting anonymous sign-in for Firestore access...");
-          const result = await signInAnonymously(auth);
+          const result = await safeSignInAnonymously();
           setFirebaseUser(result.user);
-          console.log("Anonymous sign-in successful.");
         } else {
           console.log("Firebase user already present:", auth.currentUser.uid);
         }
       } catch (err: any) {
-        if (err.code === 'auth/admin-restricted-operation') {
+        if (err.code === 'auth/admin-restricted-operation' || err.code === 'auth/operation-not-allowed') {
           console.error("CRITICAL: Anonymous Auth is disabled in Firebase Console. Writes will fail.");
         } else {
           console.error("Initial Firebase Auth check/sign-in failed:", err);
@@ -86,37 +129,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setFirebaseUser(user);
       console.log("Firebase Auth State Changed:", user ? `User: ${user.uid}` : "No User");
+      if (user) {
+          syncUser();
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [syncUser]);
 
   useEffect(() => {
     if (!isAuthReady) return;
     
-    const syncUser = () => {
-        const firebaseUser = auth.currentUser;
-
-        if (firebaseUser) {
-            // Try to find user in mockDB by uid (for Google users) or username (for anonymous admins)
-            const foundUser = mockDB.users.find(u => 
-                u._id === firebaseUser.uid || 
-                (firebaseUser.displayName && u.username === firebaseUser.displayName)
-            );
-            
-            if (foundUser && (!user || user._id !== foundUser._id)) {
-                console.log("Syncing user state with Firebase user:", foundUser.username);
-                setUser(foundUser);
-            }
-        }
-    };
-
     // Sync immediately
     syncUser();
     
     // Also sync whenever mockDB changes (e.g. after initializeData finishes)
     const unsubscribe = subscribeToDbChanges(syncUser);
     return () => unsubscribe();
-  }, [isAuthReady, user]);
+  }, [isAuthReady, syncUser]);
 
   useEffect(() => {
     if (user) {
@@ -164,7 +193,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
         
         try {
-            const result = await signInAnonymously(auth);
+            const result = await safeSignInAnonymously();
             const uid = result.user.uid;
             const adminData = { ...tempAdmin, _id: uid };
             await dbService.upsertDocument('users', uid, adminData);
@@ -194,7 +223,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
         
         try {
-            const result = await signInAnonymously(auth);
+            const result = await safeSignInAnonymously();
             const uid = result.user.uid;
             const agentData = { ...tempAgent, _id: uid };
             await dbService.upsertDocument('users', uid, agentData);
@@ -223,7 +252,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     try {
-        const result = await signInAnonymously(auth);
+        const result = await safeSignInAnonymously();
         const uid = result.user.uid;
         
         let currentUser = foundUser;
@@ -242,7 +271,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error("Firebase Auth failed:", err);
         return { success: false, message: `Firebase Auth failed: ${err.message}. Please check if Anonymous Auth is enabled in Firebase Console.` };
     }
-}, [playSound]);
+}, [playSound, safeSignInAnonymously]);
 
   const loginAsPlayer = useCallback(async (): Promise<AuthResult> => {
     // Creates a temporary guest user object for instant player access without needing a database account.
@@ -256,7 +285,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     try {
-        await signInAnonymously(auth);
+        await safeSignInAnonymously();
         setUser(guestPlayer);
         setOriginalUser(null);
         setIsAuthReady(true);
@@ -271,7 +300,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsAuthReady(true);
         return { success: true }; // Still return true so they can enter the app
     }
-}, [playSound]);
+}, [playSound, safeSignInAnonymously]);
   
   const loginWithGoogle = useCallback(async (): Promise<AuthResult> => {
     try {
@@ -316,10 +345,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [playSound]);
 
-  const logout = useCallback(() => {
-      auth.signOut().catch(err => console.error("Firebase SignOut failed:", err));
-      setUser(null);
-      setOriginalUser(null);
+  const logout = useCallback(async () => {
+    try {
+      await auth.signOut();
+      console.log("Firebase SignOut successful.");
+    } catch (err) {
+      console.error("Firebase SignOut failed:", err);
+    }
+    setUser(null);
+    setOriginalUser(null);
   }, []);
 
   const updateUser = useCallback(async (updatedUserData: Partial<User>) => {

@@ -111,7 +111,7 @@ export const BookingFormPopup: React.FC<BookingFormPopupProps> = ({ isOpen, onCl
                         <select value={agentId} onChange={e => setAgentId(e.target.value)} className="w-full mt-1 p-2 border border-slate-600 bg-slate-700 text-white rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
                             <option value="" disabled>Choose an agent or admin</option>
                             {recipients.map(recipient => (
-                                <option key={recipient._id} value={recipient._id}>
+                                <option key={recipient._id || recipient.name} value={recipient._id}>
                                     {recipient.name} {recipient.role === 'admin' ? '(Admin)' : ''}
                                 </option>
                             ))}

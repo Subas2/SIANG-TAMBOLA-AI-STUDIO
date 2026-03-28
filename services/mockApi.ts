@@ -110,18 +110,59 @@ export const initializeData = async (userRole?: string) => {
 
         if (firebaseUser) {
             if (isValidAdmin || isValidAgent) {
-                fetchPromises.push(fetchCollection('users', 'users'));
+                fetchPromises.push((async () => {
+                    const data = await dbService.getCollection('users');
+                    if (data) {
+                        const mapped = data.map((item: any) => ({ ...item, _id: String(item.id) })) as unknown as User[];
+                        const uniqueMap = new Map();
+                        let defaultAgentAdded = false;
+                        mapped.forEach(u => {
+                            if (!uniqueMap.has(u._id)) {
+                                if (u.name === 'Default Agent') {
+                                    if (!defaultAgentAdded) {
+                                        uniqueMap.set(u._id, u);
+                                        defaultAgentAdded = true;
+                                    }
+                                } else {
+                                    uniqueMap.set(u._id, u);
+                                }
+                            }
+                        });
+                        mockDB.users = Array.from(uniqueMap.values());
+                    }
+                })());
             } else {
-                // Players only fetch agents and themselves
+                // Players fetch agents, admins and themselves
                 fetchPromises.push(
                     (async () => {
                         const agents = await dbService.queryCollection('users', [where('role', '==', 'agent')]);
+                        const admins = await dbService.queryCollection('users', [where('role', '==', 'admin')]);
                         const self = await dbService.getDocument('users', firebaseUser.uid);
-                        const combined = [...(agents || [])];
-                        if (self && !combined.find(u => u.id === self.id)) {
-                            combined.push(self);
+                        const combined = [...(agents || []), ...(admins || [])];
+                        
+                        const uniqueMap = new Map();
+                        let defaultAgentAdded = false;
+                        
+                        // Process self first to ensure it's included correctly
+                        if (self) {
+                            const selfId = String(self.id || self._id);
+                            uniqueMap.set(selfId, { ...self, _id: selfId });
                         }
-                        mockDB.users = combined.map((item: any) => ({ ...item, _id: String(item.id) })) as unknown as User[];
+
+                        combined.forEach((u: any) => {
+                            const id = String(u.id || u._id);
+                            if (!uniqueMap.has(id)) {
+                                if (u.name === 'Default Agent') {
+                                    if (!defaultAgentAdded) {
+                                        uniqueMap.set(id, { ...u, _id: id });
+                                        defaultAgentAdded = true;
+                                    }
+                                } else {
+                                    uniqueMap.set(id, { ...u, _id: id });
+                                }
+                            }
+                        });
+                        mockDB.users = Array.from(uniqueMap.values()) as unknown as User[];
                     })()
                 );
             }
@@ -196,15 +237,47 @@ export const initializeData = async (userRole?: string) => {
         if (firebaseUser) {
             if (isValidAdmin || isValidAgent) {
                 activeSubscriptions.push(dbService.subscribeToCollection('users', (data) => {
-                    mockDB.users = data.map(u => ({ ...u, _id: String(u.id) })) as unknown as User[];
+                    const mapped = data.map(u => ({ ...u, _id: String(u.id) })) as unknown as User[];
+                    const uniqueMap = new Map();
+                    let defaultAgentAdded = false;
+                    mapped.forEach(u => {
+                        if (!uniqueMap.has(u._id)) {
+                            if (u.name === 'Default Agent') {
+                                if (!defaultAgentAdded) {
+                                    uniqueMap.set(u._id, u);
+                                    defaultAgentAdded = true;
+                                }
+                            } else {
+                                uniqueMap.set(u._id, u);
+                            }
+                        }
+                    });
+                    mockDB.users = Array.from(uniqueMap.values());
                     notifyDbChanges();
                 }));
             } else {
-                // Players only subscribe to agents and themselves
-                activeSubscriptions.push(dbService.subscribeToQuery('users', [where('role', '==', 'agent')], (data) => {
+                // Players subscribe to agents, admins and themselves
+                activeSubscriptions.push(dbService.subscribeToQuery('users', [where('role', 'in', ['agent', 'admin'])], (data) => {
                     const self = mockDB.users.find(u => u._id === firebaseUser.uid);
-                    const agents = data.map(u => ({ ...u, _id: String(u.id) })) as unknown as User[];
-                    mockDB.users = self ? [self, ...agents.filter(a => a._id !== self._id)] : agents;
+                    const others = data.map(u => ({ ...u, _id: String(u.id) })) as unknown as User[];
+                    const combined = self ? [self, ...others.filter(a => a._id !== self._id)] : others;
+                    
+                    const uniqueMap = new Map();
+                    let defaultAgentAdded = false;
+                    combined.forEach((u: any) => {
+                        const id = u._id;
+                        if (!uniqueMap.has(id)) {
+                            if (u.name === 'Default Agent') {
+                                if (!defaultAgentAdded) {
+                                    uniqueMap.set(id, u);
+                                    defaultAgentAdded = true;
+                                }
+                            } else {
+                                uniqueMap.set(id, u);
+                            }
+                        }
+                    });
+                    mockDB.users = Array.from(uniqueMap.values()) as unknown as User[];
                     notifyDbChanges();
                 }));
                 activeSubscriptions.push(dbService.subscribeToDocument('users', firebaseUser.uid, (data) => {
@@ -212,6 +285,23 @@ export const initializeData = async (userRole?: string) => {
                         const self = { ...data, _id: String(data.id) } as unknown as User;
                         const others = mockDB.users.filter(u => u._id !== self._id);
                         const combined = [self, ...others];
+                        
+                        const uniqueMap = new Map();
+                        let defaultAgentAdded = false;
+                        combined.forEach((u: any) => {
+                            const id = u._id;
+                            if (!uniqueMap.has(id)) {
+                                if (u.name === 'Default Agent') {
+                                    if (!defaultAgentAdded) {
+                                        uniqueMap.set(id, u);
+                                        defaultAgentAdded = true;
+                                    }
+                                } else {
+                                    uniqueMap.set(id, u);
+                                }
+                            }
+                        });
+                        mockDB.users = Array.from(uniqueMap.values()) as unknown as User[];
                         notifyDbChanges();
                     }
                 }));
@@ -389,6 +479,16 @@ const gameCycle = async (gameId: string) => {
         return;
     }
 
+    if (game.preGameCountdownEndsAt) {
+        if (Date.now() < game.preGameCountdownEndsAt) {
+            return;
+        } else {
+            // Countdown finished, clear it and start the game
+            await api.admin.updateGame(gameId, { preGameCountdownEndsAt: null });
+            return;
+        }
+    }
+
     if (game.cycleEndsAt && Date.now() < game.cycleEndsAt) {
         return;
     }
@@ -412,12 +512,18 @@ const gameCycle = async (gameId: string) => {
     let newManualQueue = [...(game.manualQueue || [])];
 
     // --- Reworked Logic for Number Selection ---
-    const currentCallMode = game.callMode || 'mix'; // Fallback to 'mix' if undefined
-    if (currentCallMode === 'auto') {
+    const currentCallMode = game.callMode || 'auto';
+    
+    if (currentCallMode === 'manual') {
+        if ((newManualQueue || []).length > 0) {
+            nextNumber = newManualQueue.shift();
+        } else {
+            return; // Don't call anything in manual mode if queue is empty
+        }
+    } else if (currentCallMode === 'auto') {
         // 'auto' mode: Exclusively select a random number from those available.
         const randomIndex = Math.floor(Math.random() * (availableNumbers || []).length);
         nextNumber = availableNumbers[randomIndex];
-        // The manual queue is intentionally not modified.
     } else if (currentCallMode === 'mix') {
         // 'mix' mode: Prioritize numbers from the manual queue.
         while ((newManualQueue || []).length > 0 && game.calledNumbers.includes(newManualQueue[0])) {
@@ -558,7 +664,59 @@ const manageAdminGameLoop = (game: Game | null) => {
 export const api = {
     admin: {
         manageGameLoop: manageAdminGameLoop,
-        getGames: async () => mockDB.games,
+        startGame: async (gameId: string) => {
+            const game = mockDB.games.find(g => g._id === gameId);
+            if (!game) return;
+
+            const countdownDuration = 10000; // 10 seconds
+            const preGameCountdownEndsAt = Date.now() + countdownDuration;
+
+            await api.admin.updateGame(gameId, {
+                status: 'ongoing',
+                isAutoCalling: true,
+                preGameCountdownEndsAt,
+                announcements: [{ text: 'Game will start now, get ready everyone', timestamp: Date.now() }]
+            });
+        },
+        pauseGame: async (gameId: string) => {
+            const game = mockDB.games.find(g => g._id === gameId);
+            if (!game) return;
+            
+            const remainingTime = game.cycleEndsAt ? game.cycleEndsAt - Date.now() : null;
+            await api.admin.updateGame(gameId, { 
+                isAutoCalling: false,
+                remainingTimeOnPause: remainingTime
+            });
+        },
+        resumeGame: async (gameId: string) => {
+            const game = mockDB.games.find(g => g._id === gameId);
+            if (!game) return;
+
+            const newCycleEndsAt = game.remainingTimeOnPause ? Date.now() + game.remainingTimeOnPause : Date.now() + (game.callDelay || 5) * 1000;
+            
+            await api.admin.updateGame(gameId, { 
+                isAutoCalling: true, 
+                isPausedForAnnouncement: false,
+                cycleEndsAt: newCycleEndsAt,
+                cycleStartedAt: Date.now(),
+                remainingTimeOnPause: null
+            });
+        },
+        stopGame: async (gameId: string) => {
+            await api.admin.updateGame(gameId, { 
+                isAutoCalling: false, 
+                status: 'completed',
+                cycleEndsAt: null,
+                cycleStartedAt: null
+            });
+        },
+        callNumberManually: async (gameId: string, number: number) => {
+            const game = mockDB.games.find(g => g._id === gameId);
+            if (!game || game.calledNumbers.includes(number)) return;
+
+            const newQueue = [...(game.manualQueue || []), number];
+            await api.admin.updateGame(gameId, { manualQueue: newQueue });
+        },
         createGame: async (gameData: Partial<Game>) => {
             const isMockMode = isUsingMockData;
             
@@ -586,7 +744,7 @@ export const api = {
                 prizes: gameData.prizes || [], 
                 agentCommission: gameData.agentCommission || 10,
                 autoVerifyClaims: gameData.autoVerifyClaims ?? mockDB.settings.autoVerifyClaims ?? true,
-                callMode: mockDB.settings.callMode,
+                callMode: gameData.callMode || mockDB.settings.callMode || 'auto',
                 isBookingOpen: true, 
                 status: 'upcoming',
                 tickets: [],
@@ -596,6 +754,8 @@ export const api = {
                 cycleEndsAt: null,
                 cycleStartedAt: null,
                 chatMessages: [],
+                callDelay: gameData.callDelay || 5,
+                useRhymes: gameData.useRhymes ?? true,
             };
 
             if (isMockMode) {
@@ -710,7 +870,7 @@ export const api = {
                 where('status', '==', 'available')
             ]);
             if (existingTickets && existingTickets.length > 0) {
-                await Promise.all(existingTickets.map(ticket => dbService.deleteDocument('tickets', ticket.id)));
+                await dbService.batchDeleteDocuments('tickets', existingTickets.map(t => t.id));
             }
 
             // Step 3: Generate new tickets for serial numbers that are not currently booked.
@@ -731,7 +891,7 @@ export const api = {
 
             // Step 4: Insert the newly generated available tickets.
             if (newTicketsToCreate.length > 0) {
-                await Promise.all(newTicketsToCreate.map(ticket => dbService.addDocument('tickets', ticket)));
+                await dbService.batchAddDocuments('tickets', newTicketsToCreate);
             }
             
             // Step 5: Update the game object with the correct list of ALL ticket IDs.
@@ -1063,13 +1223,6 @@ export const api = {
             const request = mockDB.ticketRequests.find(r => r._id === requestId);
             if (!request) throw new Error("Request not found.");
 
-            // Update request status
-            const historyEntry: HistoryEntry = { action: 'APPROVED', by: 'ADMIN', timestamp: Date.now() };
-            const updatedRequest = await dbService.updateDocument('ticket_requests', requestId, { 
-                status: 'approved',
-                history: [...(request.history || []), historyEntry]
-            });
-
             // Actually book the tickets if not already booked
             if (request.ticketIds && request.ticketIds.length > 0) {
                 try {
@@ -1080,8 +1233,16 @@ export const api = {
                     });
                 } catch (error) {
                     console.error("Failed to book tickets during request approval:", error);
+                    throw error; // Re-throw to prevent updating request status
                 }
             }
+
+            // Update request status
+            const historyEntry: HistoryEntry = { action: 'APPROVED', by: 'ADMIN', timestamp: Date.now() };
+            const updatedRequest = await dbService.updateDocument('ticket_requests', requestId, { 
+                status: 'approved',
+                history: [...(request.history || []), historyEntry]
+            });
 
             if (updatedRequest) {
                 mockDB.ticketRequests = mockDB.ticketRequests.map(req =>
@@ -1206,9 +1367,9 @@ export const api = {
             const firstTicket = mockDB.tickets.find(t => t._id === ticketIds[0]);
             if (!firstTicket) throw new Error("No tickets found to book.");
             
-            // Check if any of the tickets are already booked
+            // Check if any of the tickets are already booked by someone else
             const ticketsToBook = mockDB.tickets.filter(t => ticketIds.includes(t._id));
-            if (ticketsToBook.some(t => t.status === 'booked')) {
+            if (ticketsToBook.some(t => t.status === 'booked' && t.player !== playerId)) {
                 throw new Error("One or more tickets are already booked.");
             }
 
@@ -1247,8 +1408,10 @@ export const api = {
                  const createdPayment = await dbService.addDocument('payments', newPayment);
                  
                  if (createdPayment) {
-                     mockDB.payments.push({ ...createdPayment, _id: createdPayment.id });
-                     notifyDbChanges();
+                     if (!mockDB.payments.some(p => p._id === createdPayment.id)) {
+                         mockDB.payments.push({ ...createdPayment, _id: createdPayment.id } as Payment);
+                         notifyDbChanges();
+                     }
                  }
             }
             return { success: true };
@@ -1262,12 +1425,6 @@ export const api = {
             const request = mockDB.ticketRequests.find(r => r._id === requestId);
             if (!request) throw new Error("Request not found.");
 
-            const historyEntry: HistoryEntry = { action: 'APPROVED', by: 'AGENT', timestamp: Date.now() };
-            const updatedRequest = await dbService.updateDocument('ticket_requests', requestId, { 
-                status: 'approved',
-                history: [...(request.history || []), historyEntry]
-            });
-
             // Book the tickets on agent approval
             if (request.ticketIds && request.ticketIds.length > 0) {
                 try {
@@ -1278,8 +1435,15 @@ export const api = {
                     });
                 } catch (error) {
                     console.error("Failed to book tickets during agent request approval:", error);
+                    throw error; // Re-throw to prevent updating request status
                 }
             }
+
+            const historyEntry: HistoryEntry = { action: 'APPROVED', by: 'AGENT', timestamp: Date.now() };
+            const updatedRequest = await dbService.updateDocument('ticket_requests', requestId, { 
+                status: 'approved',
+                history: [...(request.history || []), historyEntry]
+            });
 
             if (updatedRequest) {
                 mockDB.ticketRequests = mockDB.ticketRequests.map(req =>
@@ -1341,8 +1505,10 @@ export const api = {
             };
             const createdRequest = await dbService.addDocument('ticket_requests', newRequestPayload);
             const newRequest = { ...createdRequest, _id: createdRequest.id } as TicketRequest;
-            mockDB.ticketRequests = [...mockDB.ticketRequests, newRequest];
-            notifyDbChanges();
+            if (!mockDB.ticketRequests.some(r => r._id === newRequest._id)) {
+                mockDB.ticketRequests = [...mockDB.ticketRequests, newRequest];
+                notifyDbChanges();
+            }
             return newRequest;
         },
         getMyTicketRequests: async (playerId: string) => {
@@ -1358,8 +1524,10 @@ export const api = {
             const createdRequest = await dbService.addDocument('agent_requests', newRequestPayload);
             const newRequest = { ...createdRequest, _id: createdRequest.id } as AgentRequest;
             if (newRequest) {
-                mockDB.agentRequests = [...mockDB.agentRequests, newRequest];
-                notifyDbChanges();
+                if (!mockDB.agentRequests.some(r => r._id === newRequest._id)) {
+                    mockDB.agentRequests = [...mockDB.agentRequests, newRequest];
+                    notifyDbChanges();
+                }
             }
             return newRequest;
         },
@@ -1550,8 +1718,10 @@ export const api = {
 
             if (createdPlayer) {
                 const normalizedPlayer = { ...createdPlayer, _id: createdPlayer.id };
-                mockDB.users.push(normalizedPlayer);
-                notifyDbChanges();
+                if (!mockDB.users.some(u => u._id === normalizedPlayer._id)) {
+                    mockDB.users.push(normalizedPlayer);
+                    notifyDbChanges();
+                }
                 return normalizedPlayer;
             }
 
